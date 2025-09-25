@@ -1,0 +1,25 @@
+name: Danone Automation
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # weekly Monday 03:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci || npm i
+      - run: npm run install-browsers
+      - name: Download and ingest for both farms
+        run: npm run dl
+        env:
+          WEBAPP_URL: ${{ secrets.WEBAPP_URL }}
+          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+          MEARNS_EMAIL: ${{ secrets.MEARNS_EMAIL }}
+          MEARNS_PASSWORD: ${{ secrets.MEARNS_PASSWORD }}
+          FAREND_EMAIL: ${{ secrets.FAREND_EMAIL }}
+          FAREND_PASSWORD: ${{ secrets.FAREND_PASSWORD }}
