@@ -7,22 +7,25 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
+
+    # Job-level env (hardcode WEBAPP_URL to avoid secret issues)
+    env:
+      WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbz9Q-03tO2RzZ1Oea9REr5lp64UVMtOqjkPVFs1A5vWpnDUqQ1sN8nKc3hO-p0elm34bQ/exec'
+      INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+      MEARNS_EMAIL: ${{ secrets.MEARNS_EMAIL }}
+      MEARNS_PASSWORD: ${{ secrets.MEARNS_PASSWORD }}
+      FAREND_EMAIL: ${{ secrets.FAREND_EMAIL }}
+      FAREND_PASSWORD: ${{ secrets.FAREND_PASSWORD }}
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # Read secrets into env, then verify they exist
-      - name: Check required secrets
-        env:
-          WEBAPP_URL: ${{ secrets.WEBAPP_URL || vars.WEBAPP_URL }}
-          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
-          MEARNS_EMAIL: ${{ secrets.MEARNS_EMAIL }}
-          MEARNS_PASSWORD: ${{ secrets.MEARNS_PASSWORD }}
-          FAREND_EMAIL: ${{ secrets.FAREND_EMAIL }}
-          FAREND_PASSWORD: ${{ secrets.FAREND_PASSWORD }}
+      - name: Check required values
         run: |
+          echo "WEBAPP_URL len: ${#WEBAPP_URL}"
           [ -n "$WEBAPP_URL" ] || (echo "WEBAPP_URL missing" && exit 1)
           [ -n "$INGEST_TOKEN" ] || (echo "INGEST_TOKEN missing" && exit 1)
           [ -n "$MEARNS_EMAIL" ] || (echo "MEARNS_EMAIL missing" && exit 1)
@@ -35,10 +38,3 @@ jobs:
 
       - name: Download and ingest for both farms
         run: npm run dl
-        env:
-          WEBAPP_URL: ${{ secrets.WEBAPP_URL || vars.WEBAPP_URL }}
-          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
-          MEARNS_EMAIL: ${{ secrets.MEARNS_EMAIL }}
-          MEARNS_PASSWORD: ${{ secrets.MEARNS_PASSWORD }}
-          FAREND_EMAIL: ${{ secrets.FAREND_EMAIL }}
-          FAREND_PASSWORD: ${{ secrets.FAREND_PASSWORD }}
