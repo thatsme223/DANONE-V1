@@ -2,13 +2,27 @@ import "dotenv/config";
 import { chromium } from "@playwright/test";
 import fetch from "node-fetch";
 
-async function runForFarm({ email, password, farm, webUrl, token }) {
+// Fail fast if any secret is missing
+const must = (name) => {
+  const v = process.env[name];
+  if (!v || String(v).trim() === "") throw new Error(`${name} secret is missing/empty`);
+  return String(v).trim();
+};
+const WEB_URL = must("WEBAPP_URL");
+const TOKEN   = must("INGEST_TOKEN");
+const MEARNS_EMAIL = must("MEARNS_EMAIL");
+const MEARNS_PASSWORD = must("MEARNS_PASSWORD");
+const FAREND_EMAIL = must("FAREND_EMAIL");
+const FAREND_PASSWORD = must("FAREND_PASSWORD");
+
+async function runForFarm({ email, password, farm }) {
   const browser = await chromium.launch({
     headless: true,
     args: ["--disable-blink-features=AutomationControlled"]
   });
   const page = await browser.newPage();
 
+  // 1) Login
   await page.goto("https://danonemilkportal.com/login", { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', password);
@@ -16,9 +30,11 @@ async function runForFarm({ email, password, farm, webUrl, token }) {
   if (btn) await btn.click(); else await page.evaluate(() => document.querySelector("form")?.submit());
   await page.waitForTimeout(2000);
 
+  // 2) Receipts
   await page.goto("https://danonemilkportal.com/#ven-rec", { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.waitForTimeout(1500);
 
+  // 3) Download XLSX (click then fallback)
   let buffer = null;
   try {
     const exportSelector = 'a:has-text("Export"), button:has-text("Export")';
@@ -45,37 +61,20 @@ async function runForFarm({ email, password, farm, webUrl, token }) {
     buffer = Buffer.from(await resp.body());
   }
 
+  // 4) Post to Apps Script webhook
   const base64 = buffer.toString("base64");
-  const r = await fetch(webUrl, {
+  const r = await fetch(WEB_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token, farm, base64 })
+    body: JSON.stringify({ token: TOKEN, farm, base64 })
   });
-  console.log(farm, "ingest ->", await r.text());
+  const txt = await r.text();
+  console.log(`${farm} ingest -> ${txt}`);
 
   await browser.close();
 }
 
 (async () => {
-  const webUrl = process.env.WEBAPP_URL;
-  const token = process.env.INGEST_TOKEN;
-
-  await runForFarm({
-    email: process.env.MEARNS_EMAIL,
-    password: process.env.MEARNS_PASSWORD,
-    farm: "MEARNS",
-    webUrl,
-    token
-  });
-
-  await runForFarm({
-    email: process.env.FAREND_EMAIL,
-    password: process.env.FAREND_PASSWORD,
-    farm: "FAR END",
-    webUrl,
-    token
-  });
-})().catch(e => {
-  console.error("Run failed:", e);
-  process.exit(1);
-});
+  await runForFarm({ email: MEARNS_EMAIL, password: MEARNS_PASSWORD, farm: "MEARNS" });
+  await runForFarm({ email: FAREND_EMAIL,  password: FAREND_PASSWORD,  farm: "FAR END" });
+})().catch(e => { console.error("Run failed:", e); process.exit(1); });
