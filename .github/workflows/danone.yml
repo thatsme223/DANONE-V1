@@ -13,14 +13,22 @@ jobs:
         with:
           node-version: 20
 
+      # Read secrets into env, then verify they exist
       - name: Check required secrets
+        env:
+          WEBAPP_URL: ${{ secrets.WEBAPP_URL || vars.WEBAPP_URL }}
+          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+          MEARNS_EMAIL: ${{ secrets.MEARNS_EMAIL }}
+          MEARNS_PASSWORD: ${{ secrets.MEARNS_PASSWORD }}
+          FAREND_EMAIL: ${{ secrets.FAREND_EMAIL }}
+          FAREND_PASSWORD: ${{ secrets.FAREND_PASSWORD }}
         run: |
-          [ -n "${{ secrets.WEBAPP_URL }}" ] || (echo "WEBAPP_URL missing" && exit 1)
-          [ -n "${{ secrets.INGEST_TOKEN }}" ] || (echo "INGEST_TOKEN missing" && exit 1)
-          [ -n "${{ secrets.MEARNS_EMAIL }}" ] || (echo "MEARNS_EMAIL missing" && exit 1)
-          [ -n "${{ secrets.MEARNS_PASSWORD }}" ] || (echo "MEARNS_PASSWORD missing" && exit 1)
-          [ -n "${{ secrets.FAREND_EMAIL }}" ] || (echo "FAREND_EMAIL missing" && exit 1)
-          [ -n "${{ secrets.FAREND_PASSWORD }}" ] || (echo "FAREND_PASSWORD missing" && exit 1)
+          [ -n "$WEBAPP_URL" ] || (echo "WEBAPP_URL missing" && exit 1)
+          [ -n "$INGEST_TOKEN" ] || (echo "INGEST_TOKEN missing" && exit 1)
+          [ -n "$MEARNS_EMAIL" ] || (echo "MEARNS_EMAIL missing" && exit 1)
+          [ -n "$MEARNS_PASSWORD" ] || (echo "MEARNS_PASSWORD missing" && exit 1)
+          [ -n "$FAREND_EMAIL" ] || (echo "FAREND_EMAIL missing" && exit 1)
+          [ -n "$FAREND_PASSWORD" ] || (echo "FAREND_PASSWORD missing" && exit 1)
 
       - run: npm ci || npm i
       - run: npm run install-browsers
@@ -28,7 +36,7 @@ jobs:
       - name: Download and ingest for both farms
         run: npm run dl
         env:
-          WEBAPP_URL: ${{ secrets.WEBAPP_URL }}
+          WEBAPP_URL: ${{ secrets.WEBAPP_URL || vars.WEBAPP_URL }}
           INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
           MEARNS_EMAIL: ${{ secrets.MEARNS_EMAIL }}
           MEARNS_PASSWORD: ${{ secrets.MEARNS_PASSWORD }}
